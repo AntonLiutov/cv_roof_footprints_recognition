@@ -3,7 +3,7 @@
     "discard_experiment":false,
     "logging":{
         "log_experiment":true,
-        "experiment_log_path":"results/aoi-experiments_manjama.csv",
+        "experiment_log_path":"results/eff_unet_ghana.csv",
         "experiment_notes":"MULTICHANNEL model w/ earlystop, batchsize 16 on Ghana dataset",
         "fields_to_log":[
             "experiment_name", 
@@ -31,46 +31,39 @@
         ]
     },
     "datasets":{
-        "train_img_dir":"ramp-data/sample_data_manjama/chips",
-        "train_mask_dir":"ramp-data/sample_data_manjama/multimasks",
-        "val_img_dir":"ramp-data/sample_data_manjama/valchips",
-        "val_mask_dir":"ramp-data/sample_data_manjama/val-multimasks",
-        "test_img_dir":"ramp-data/sample_data_manjama/test-chips",
-        "test_mask_dir":"ramp-data/sample_data_manjama/test-multimasks"
+        "train_img_dir":"data/chips",
+        "train_mask_dir":"data/multimasks",
+        "val_img_dir":"data/valchips",
+        "val_mask_dir":"data/val-multimasks",
+        "test_img_dir":"data/test-chips",
+        "test_mask_dir":"data/test-multimasks"
     },
     "num_classes":4,
-    "num_epochs":2,
+    "num_epochs":3,
     "batch_size":16,
-    "input_img_shape":[256,256],
-    "output_img_shape":[256,256],
-    "loss":{
-        "get_loss_fn_name":"get_sparse_categorical_crossentropy_fn",
-        "loss_fn_parms":{}
-    },
-    "metrics":{
-        "use_metrics":true,
-        "get_metrics_fn_names":["get_sparse_categorical_accuracy_fn"],
-        "metrics_fn_parms":[{}]
-    },
-    "optimizer":{
-        "get_optimizer_fn_name":"get_adam_optimizer",
-        "optimizer_fn_parms":{
+    "input_img_shape":[256, 256],
+    "output_img_shape":[256, 256],
+    "loss": tf.keras.losses.sparse_categorical_crossentropy,
+    "metrics": tf.keras.metrics.SparseCategoricalAccuracy(),
+    "optimizer": 
+        "optimizer_fn_name": tf.keras.optimizers.Adam(),
+        "params":{
             "learning_rate":3E-04
         }
     },
     "model":{
-        "get_model_fn_name":"get_effunet_model",
-        "model_fn_parms":{
+        "model_name":"Eff_UNet",
+        "model_parms":{
             "backbone":"efficientnetb0",
-            "classes":["background","buildings","boundary","close_contact"]
+            "classes":["background", "buildings", "boundary", "close_contact"]
         }
     },
     "saved_model":{
-        "use_saved_model":false
+        "use_saved_model": false
+        "saved_model_path": ""
     },
     "augmentation":{
         "use_aug":true,
-
         "get_augmentation_fn_name":"get_augmentation_fn",
         "aug_list":["Rotate","ColorJitter"],
         "aug_parms":[
@@ -97,17 +90,6 @@
             "restore_best_weights":false
         }
     },
-    "cyclic_learning_scheduler":{
-        "use_clr":false,
-        "get_clr_callback_fn_name":"get_clr_callback_fn",
-        "clr_callback_parms":{
-            "mode":"triangular2",
-            "stepsize":8,
-            "max_lr":1e-4,
-            "base_lr":3.25e-6
-        },
-        "clr_plot_dir":"ramp-data/plots"
-    },
     "tensorboard":{
         "use_tb":true,
         "tb_logs_dir":"ramp-data/logs",
@@ -116,19 +98,19 @@
             "histogram_freq":1,
             "update_freq":"batch"
         }
-    },    
+    },
     "prediction_logging":{
         "use_prediction_logging":true,
         "get_prediction_logging_fn_name":"get_pred_logging_callback_fn"
     },
     "model_checkpts":{
         "use_model_checkpts":true,
-        "model_checkpts_dir": "ramp-data/model-checkpts",
+        "model_checkpts_dir": "/model-checkpts",
         "get_model_checkpt_callback_fn_name":"get_model_checkpt_callback_fn",
         "model_checkpt_callback_parms":{
             "mode":"max",
             "save_best_only":true
         }
     },
-    "random_seed":20220523
+    "random_seed":20230215
 }
