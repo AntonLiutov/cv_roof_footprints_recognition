@@ -53,7 +53,7 @@
         }
     },
     "saved_model":{
-        "use_saved_model": false
+        "use_saved_model": false,
         "saved_model_path": ""
     },
     "augmentation":{
