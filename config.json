@@ -1,10 +1,10 @@
 {
-    "experiment_name":"Manjama Efficient-Unet model",
+    "experiment_name":"Ghana Efficient-Unet model",
     "discard_experiment":false,
     "logging":{
         "log_experiment":true,
-        "experiment_log_path":"ramp-data/aoi-experiments_manjama.csv",
-        "experiment_notes":"MULTICHANNEL model w/ earlystop, batchsize 16 on Manjama dataset",
+        "experiment_log_path":"results/aoi-experiments_manjama.csv",
+        "experiment_notes":"MULTICHANNEL model w/ earlystop, batchsize 16 on Ghana dataset",
         "fields_to_log":[
             "experiment_name", 
             "experiment_notes", 
