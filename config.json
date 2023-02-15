@@ -43,14 +43,8 @@
     "batch_size":16,
     "input_img_shape":[256, 256],
     "output_img_shape":[256, 256],
-    "loss": tf.keras.losses.sparse_categorical_crossentropy,
-    "metrics": tf.keras.metrics.SparseCategoricalAccuracy(),
-    "optimizer": 
-        "optimizer_fn_name": tf.keras.optimizers.Adam(),
-        "params":{
-            "learning_rate":3E-04
-        }
-    },
+    "loss": "sparse_categorical_crossentropy",
+    "metrics": "sparse_categorical_accuracy",
     "model":{
         "model_name":"Eff_UNet",
         "model_parms":{
