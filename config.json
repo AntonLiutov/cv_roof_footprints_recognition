@@ -1,35 +1,5 @@
 {
     "experiment_name":"Ghana Efficient-Unet model",
-    "discard_experiment":false,
-    "logging":{
-        "log_experiment":true,
-        "experiment_log_path":"results/eff_unet_ghana.csv",
-        "experiment_notes":"MULTICHANNEL model w/ earlystop, batchsize 16 on Ghana dataset",
-        "fields_to_log":[
-            "experiment_name", 
-            "experiment_notes", 
-            "timestamp",
-            "num_epochs",
-            "batch_size",
-            "output_img_shape",
-            "input_img_shape",
-            "get_loss_fn_name",
-            "use_saved_model",
-            "use_aug",
-            "use_early_stopping",
-            "use_clr",
-            "random_seed",
-            "num_classes",
-            "get_optimizer_fn_name",
-            "tb_logs_dir",
-            "get_model_fn_name",
-            "backbone",
-            "train_img_dir",
-            "train_mask_dir",
-            "val_img_dir",
-            "val_mask_dir"
-        ]
-    },
     "datasets":{
         "train_img_dir":"data/chips",
         "train_mask_dir":"data/multimasks",
@@ -92,10 +62,6 @@
             "histogram_freq":1,
             "update_freq":"batch"
         }
-    },
-    "prediction_logging":{
-        "use_prediction_logging":true,
-        "get_prediction_logging_fn_name":"get_pred_logging_callback_fn"
     },
     "model_checkpts":{
         "use_model_checkpts":true,
