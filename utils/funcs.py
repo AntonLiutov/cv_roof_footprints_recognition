@@ -4,7 +4,7 @@ import os
 # from pathlib import Path
 # import logging
 # import datetime
-# import random
+import random
 
 # import json
 # import cv2
@@ -14,7 +14,7 @@ from osgeo import gdal, gdalnumeric as gdn
 import numpy as np
 # import pandas as pd
 # import matplotlib.pyplot as plt
-# from functools import partial
+from functools import partial
 import tensorflow as tf
 import albumentations as A
 # import segmentation_models as sm
