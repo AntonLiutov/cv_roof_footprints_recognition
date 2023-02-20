@@ -41,7 +41,7 @@ def get_num_files(dirname, pattern="*.tif"):
     return len(get_files(dirname, pattern="*.tif"))
 
 
-def tf_gdal_get_image_tensor(image_path):
+def tf_gdal_get_image_tensor(image_path, new_size, the_method):
     """
     Reads a satellite image geotiff using gdal, and converts to a numpy tensor.
     Image geotiffs have 3 channels (RGB) and are of type float32.
@@ -49,6 +49,9 @@ def tf_gdal_get_image_tensor(image_path):
     Channels go last in the index order for the output tensor, as is standard for tensorflow.
     
     :param tf.StringTensor image_path: path to the image file, as a tensorflow String Tensor.
+    new_size: the new dimensions (width, height) of the output image array. 
+        The number of channels is unchanged, so is not specified in 'new_size'.
+    the_method: method specified for interpolation. 'nearest' for masks, 'bilinear' for images. 
     """
 
     # Open the raster image file using GDAL
@@ -66,10 +69,12 @@ def tf_gdal_get_image_tensor(image_path):
     image = np.stack(band_arrays, axis=-1)
 
     # normalize the float image to [0,1]
-    return image/np.max(image)
+    image = image/np.max(image)
+
+    return tf.image.resize(image, new_size, method=the_method)
 
 
-def tf_gdal_get_mask_tensor(mask_path):
+def tf_gdal_get_mask_tensor(mask_path, new_size, the_method):
     """
     Reads a mask geotiff image using gdal, and converts to a numpy tensor.
     Masks have datatype uint8, and a single channel.
@@ -78,6 +83,9 @@ def tf_gdal_get_mask_tensor(mask_path):
     Channels go last in the index order for the output tensor, as is standard for tensorflow.
 
     :param tf.StringTensor mask_path: path to the image file, as a tensorflow String Tensor.
+    new_size: the new dimensions (width, height) of the output image array. 
+        The number of channels is unchanged, so is not specified in 'new_size'.
+    the_method: method specified for interpolation. 'nearest' for masks, 'bilinear' for images.
     """
 
     # Open the raster image file using GDAL
@@ -92,8 +100,8 @@ def tf_gdal_get_mask_tensor(mask_path):
       band_arrays.append(gdn.BandReadAsArray(current_band))
 
     # Stack the band arrays together along the last axis to create a multi-band array
-    mask = np.stack(band_arrays, axis=-1)
+    mask = np.stack(band_arrays, axis=-1, dtype=np.uint8)
 
-    return mask
+    return tf.image.resize(mask, new_size, method=the_method)
 
 
