@@ -38,70 +38,93 @@ def get_num_files(dirname, pattern="*.tif"):
     return len(get_files(dirname, pattern="*.tif"))
 
 
-def tf_gdal_get_image_tensor(image_path, new_size, the_method):
-    """
-    Reads a satellite image geotiff using gdal, and converts to a numpy tensor.
-    Image geotiffs have 3 channels (RGB) and are of type float32.
+class RampError(Exception):
+    pass
+
+
+# thrown when gdal.Open fails
+class GdalReadError(RampError):
+    pass
+
+
+def tf_gdal_get_image_tensor(image_path):    
+  '''
+  Reads a satellite image geotiff using gdal, and converts to a numpy tensor.
+  Image geotiffs have 3 channels (RGB) and are of type float32.
+
   
-    Channels go last in the index order for the output tensor, as is standard for tensorflow.
+  Channels go last in the index order for the output tensor, as is standard for tensorflow.
+
+  :param tf.StringTensor image_path: path to the image file, as a tensorflow String Tensor.
+  '''
+
+  its_dtype = "float32"
+  ds  = gdal.Open(image_path.numpy())
+  if not ds:
+      log.error(f"GDAL could not read {image_path.numpy()}")
+      raise GdalReadError(f"Could not read {image_path.numpy()}")
+  bands = [ds.GetRasterBand(i) for i in range(1, ds.RasterCount + 1)]
+  cols = ds.RasterXSize 
+  rows = ds.RasterYSize 
     
-    :param tf.StringTensor image_path: path to the image file, as a tensorflow String Tensor.
+  # create a channels_last array -- rows, columns
+  the_array = np.zeros((rows, cols, ds.RasterCount), its_dtype)
+  
+  for bnum, the_band in enumerate(bands):
+    from_img = gdn.BandReadAsArray(the_band)
+    to_img = the_array[:,:,bnum]
+    np.copyto(to_img, from_img)
+    
+  # normalize the float image to [0,1]
+  return the_array/np.max(the_array)
+
+
+def tf_gdal_get_mask_tensor(mask_path):
+  '''
+  Reads a mask geotiff image using gdal, and converts to a numpy tensor.
+  Masks have datatype uint8, and a single channel.
+  mask_path: path to a gdal-readable image.
+  
+  Channels go last in the index order for the output tensor, as is standard for tensorflow.
+
+  :param tf.StringTensor mask_path: path to the image file, as a tensorflow String Tensor.
+  '''
+
+  its_dtype = "uint8"
+
+  ds  = gdal.Open(mask_path.numpy())
+  if not ds:
+    log.error(f"GDAL could not read {mask_path.numpy()}")
+    raise GdalReadError(f"Could not read {mask_path.numpy()}")
+  bands = [ds.GetRasterBand(i) for i in range(1, ds.RasterCount + 1)]
+  cols = ds.RasterXSize 
+  rows = ds.RasterYSize 
+    
+  # create a channels_last array -- rows, columns
+  the_array = np.zeros((rows, cols, ds.RasterCount), its_dtype)
+  
+  for bnum, the_band in enumerate(bands):
+    from_img = gdn.BandReadAsArray(the_band)
+    to_img = the_array[:,:,bnum]
+    np.copyto(to_img, from_img)
+  return the_array
+
+
+def resize_it(an_image, original_shape, new_size, the_method):
+    '''
+    Used with 'map' to resize images in the data pipeline.
+    an_image: an image array of shape 'original shape'.
+    original_shape: the shape of the input image array.
     new_size: the new dimensions (width, height) of the output image array. 
         The number of channels is unchanged, so is not specified in 'new_size'.
     the_method: method specified for interpolation. 'nearest' for masks, 'bilinear' for images. 
-    """
+    '''
 
-    # Open the raster image file using GDAL
-    ds = gdal.Open(image_path.numpy())
-
-    # Extract the individual raster bands as a list
-    bands = [ds.GetRasterBand(i) for i in range(1, ds.RasterCount + 1)]
-
-    # Iterate over each band and read it as a NumPy array
-    band_arrays = []
-    for band_num, current_band in enumerate(bands):
-      band_arrays.append(gdn.BandReadAsArray(current_band))
-
-    # Stack the band arrays together along the last axis to create a multi-band array
-    image = np.stack(band_arrays, axis=-1)
-
-    # normalize the float image to [0,1]
-    image = image/np.max(image)
-    image = image.astype(np.float32)
-
-    return tf.image.resize(image, new_size, method=the_method)
-
-
-def tf_gdal_get_mask_tensor(mask_path, new_size, the_method):
-    """
-    Reads a mask geotiff image using gdal, and converts to a numpy tensor.
-    Masks have datatype uint8, and a single channel.
-    mask_path: path to a gdal-readable image.
-
-    Channels go last in the index order for the output tensor, as is standard for tensorflow.
-
-    :param tf.StringTensor mask_path: path to the image file, as a tensorflow String Tensor.
-    new_size: the new dimensions (width, height) of the output image array. 
-        The number of channels is unchanged, so is not specified in 'new_size'.
-    the_method: method specified for interpolation. 'nearest' for masks, 'bilinear' for images.
-    """
-
-    # Open the raster image file using GDAL
-    ds = gdal.Open(mask_path.numpy())
-
-    # Extract the individual raster bands as a list
-    bands = [ds.GetRasterBand(i) for i in range(1, ds.RasterCount + 1)]
-
-    # Iterate over each band and read it as a NumPy array
-    band_arrays = []
-    for band_num, current_band in enumerate(bands):
-      band_arrays.append(gdn.BandReadAsArray(current_band))
-
-    # Stack the band arrays together along the last axis to create a multi-band array
-    mask = np.stack(band_arrays, axis=-1)
-    mask = mask.astype(np.uint8)
-    
-    return tf.image.resize(mask, new_size, method=the_method)
+    # this call to set_shape works around a bug in tensorflow
+    # the bug is described in this article: 
+    # https://stackoverflow.com/questions/62957726/i-got-value-error-that-image-has-no-shape-while-converting-image-to-tensor-for-p
+    an_image.set_shape(original_shape)
+    return tf.image.resize(an_image, new_size, method=the_method)
 
 
 def get_apply_augmentation_function(img_shape, transforms):
@@ -148,9 +171,6 @@ def get_apply_augmentation_function(img_shape, transforms):
     aug_mask = tf.cast(aug_mask, tf.uint8)
     aug_img = tf.image.resize(aug_img, size=img_shape)
     aug_mask = tf.image.resize(aug_mask, size=img_shape, method='nearest')
-    aug_img.set_shape([*img_shape, 3])
-    aug_mask.set_shape([*img_shape, 1])
-
     return aug_img, aug_mask
 
   # return the prepackaged function
@@ -168,9 +188,9 @@ def process_data(image, mask, img_shape, transforms):
 
 
 def reset_shapes(image, mask, image_shape):
-    image.set_shape([*image_shape, 3])
-    mask.set_shape([*image_shape,1])
-    return image, mask
+  image.set_shape([*image_shape, 3])
+  mask.set_shape([*image_shape,1])
+  return image, mask
 
 
 def training_batches_from_gtiff_dirs(
@@ -225,17 +245,20 @@ def training_batches_from_gtiff_dirs(
     n_masks = tf.data.experimental.cardinality(mask_ds)
     assert n_images==n_masks, f"Number of images: {n_images} | Number of masks: {n_masks}"
     
-    # Define functions to load images and masks using the gdal functions
-    tf_load_image_fn = lambda imgname: tf.py_function(func=tf_gdal_get_image_tensor, 
-                                                      inp=[imgname, output_image_size, 'bilinear'], 
-                                                      Tout=tf.float32)
-    tf_load_mask_fn = lambda maskname: tf.py_function(func=tf_gdal_get_mask_tensor, 
-                                                      inp=[maskname, output_image_size, 'nearest'], 
-                                                      Tout=tf.uint8)
+    # Define functions to use for loading gdal images in the data pipeline.
+    # These are just Tensorflow wrappers around 
+    # the gdal_get_image_tensor and gdal_get_mask_tensor functions.
+    tf_load_image_fn = lambda imgname: tf.py_function(func = tf_gdal_get_image_tensor, 
+                              inp=[imgname], 
+                              Tout=[tf.float32])
 
-    # Load and resize images and masks using the gdal functions
-    images = image_ds.map(tf_load_image_fn)
-    masks = mask_ds.map(tf_load_mask_fn)
+    tf_load_mask_fn = lambda maskname: tf.py_function(func = tf_gdal_get_mask_tensor,
+                                                   inp = [maskname],
+                                                    Tout = [tf.uint8])
+    
+    # resize the images and masks to the desired size.
+    images = image_ds.map(tf_load_image_fn).map(lambda x: resize_it(x, [*input_image_size, 3], output_image_size, 'bilinear'))
+    masks = mask_ds.map(tf_load_mask_fn).map(lambda x: resize_it(x, [*input_image_size, 1], output_image_size,'nearest'))
 
     # zip them together so the resulting dataset puts out a data element of the form (image, matching mask).
     zip_pairs = tf.data.Dataset.zip((images, masks), name=None)
@@ -309,17 +332,20 @@ def test_batches_from_gtiff_dirs(
       n_masks = tf.data.experimental.cardinality(mask_ds)
       assert n_images==n_masks, f"Num images: {n_images}, Num masks: {n_masks} "
 
-      # Define functions to load images and masks using the gdal functions
-      tf_load_image_fn = lambda imgname: tf.py_function(func=tf_gdal_get_image_tensor, 
-                                                        inp=[imgname, output_image_size, 'bilinear'], 
-                                                        Tout=tf.float32)
-      tf_load_mask_fn = lambda maskname: tf.py_function(func=tf_gdal_get_mask_tensor, 
-                                                        inp=[maskname, output_image_size, 'nearest'], 
-                                                        Tout=tf.uint8)
+      # Define functions to use for loading gdal images in the data pipeline.
+      # These are just Tensorflow wrappers around
+      # the gdal_get_image_tensor and gdal_get_mask_tensor functions.
+      tf_load_image_fn = lambda imgname: tf.py_function(func = tf_gdal_get_image_tensor,
+                                inp=[imgname],
+                                Tout=[tf.float32])
 
-      # Load and resize images and masks using the gdal functions
-      images = image_ds.map(tf_load_image_fn)
-      masks = mask_ds.map(tf_load_mask_fn)
+      tf_load_mask_fn = lambda maskname: tf.py_function(func = tf_gdal_get_mask_tensor,
+                                                    inp = [maskname],
+                                                      Tout = [tf.uint8])
+
+      # resize the images and masks to the desired size.
+      images = image_ds.map(tf_load_image_fn).map(lambda x: resize_it(x, [*input_image_size, 3], output_image_size, 'bilinear'))
+      masks = mask_ds.map(tf_load_mask_fn).map(lambda x: resize_it(x, (*input_image_size, 1), output_image_size,'nearest'))
 
       # zip them together so the resulting dataset puts out a data element of the form (image, matching mask).
       zip_pairs = tf.data.Dataset.zip((images, masks), name=None)
