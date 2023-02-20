@@ -47,7 +47,6 @@ class GdalReadError(RampError):
     pass
 
 
-@tf.function
 def tf_gdal_get_image_tensor(image_path):    
   '''
   Reads a satellite image geotiff using gdal, and converts to a numpy tensor.
@@ -80,7 +79,6 @@ def tf_gdal_get_image_tensor(image_path):
   return the_array/np.max(the_array)
 
 
-@tf.function
 def tf_gdal_get_mask_tensor(mask_path):
   '''
   Reads a mask geotiff image using gdal, and converts to a numpy tensor.
@@ -112,7 +110,6 @@ def tf_gdal_get_mask_tensor(mask_path):
   return the_array
 
 
-@tf.function
 def resize_it(an_image, original_shape, new_size, the_method):
     '''
     Used with 'map' to resize images in the data pipeline.
@@ -130,7 +127,6 @@ def resize_it(an_image, original_shape, new_size, the_method):
     return tf.image.resize(an_image, new_size, method=the_method)
 
 
-@tf.function
 def get_apply_augmentation_function(img_shape, transforms):
   '''
   Function that prepackages a function that applies augmentation.
@@ -181,7 +177,6 @@ def get_apply_augmentation_function(img_shape, transforms):
   return apply_augmentation
 
 
-@tf.function
 def process_data(image, mask, img_shape, transforms):
   '''
   Code reference page: https://albumentations.ai/docs/examples/tensorflow-example/
@@ -192,14 +187,12 @@ def process_data(image, mask, img_shape, transforms):
   return aug_img, aug_mask
 
 
-@tf.function
 def reset_shapes(image, mask, image_shape):
   image.set_shape([*image_shape, 3])
   mask.set_shape([*image_shape,1])
   return image, mask
 
 
-@tf.function
 def training_batches_from_gtiff_dirs(
     image_file_dir,
     mask_file_dir,
@@ -309,7 +302,6 @@ def training_batches_from_gtiff_dirs(
     return data_batches
 
 
-@tf.function
 def test_batches_from_gtiff_dirs(
     image_file_dir,
     mask_file_dir,
