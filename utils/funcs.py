@@ -9,13 +9,13 @@ import os
 # import json
 # import cv2
 import glob
-# from osgeo import gdal, gdalnumeric as gdn
+from osgeo import gdal, gdalnumeric as gdn
 
-# import numpy as np
+import numpy as np
 # import pandas as pd
 # import matplotlib.pyplot as plt
 # from functools import partial
-# import tensorflow as tf
+import tensorflow as tf
 # import albumentations as A
 # import segmentation_models as sm
 
@@ -38,7 +38,8 @@ def get_num_files(dirname, pattern="*.tif"):
     Get the number of TIFF files in a directory.
     """
     # Get the list of files in the directory
-    return len(get_files(dirname, pattern="*.tif")
+    return len(get_files(dirname, pattern="*.tif"))
+
 
 def tf_gdal_get_image_tensor(image_path):
     """
