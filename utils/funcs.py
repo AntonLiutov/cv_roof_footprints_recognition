@@ -40,7 +40,6 @@ def get_num_files(dirname, pattern="*.tif"):
     # Get the list of files in the directory
     return len(get_files(dirname, pattern="*.tif")
 
-
 def tf_gdal_get_image_tensor(image_path):
     """
     Reads a satellite image geotiff using gdal, and converts to a numpy tensor.
