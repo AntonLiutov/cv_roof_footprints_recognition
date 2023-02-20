@@ -70,6 +70,7 @@ def tf_gdal_get_image_tensor(image_path, new_size, the_method):
 
     # normalize the float image to [0,1]
     image = image/np.max(image)
+    image = image.astype(np.float32)
 
     return tf.image.resize(image, new_size, method=the_method)
 
@@ -100,8 +101,9 @@ def tf_gdal_get_mask_tensor(mask_path, new_size, the_method):
       band_arrays.append(gdn.BandReadAsArray(current_band))
 
     # Stack the band arrays together along the last axis to create a multi-band array
-    mask = np.stack(band_arrays, axis=-1, dtype=np.uint8)
-
+    mask = np.stack(band_arrays, axis=-1)
+    mask = mask.astype(np.uint8)
+    
     return tf.image.resize(mask, new_size, method=the_method)
 
 
