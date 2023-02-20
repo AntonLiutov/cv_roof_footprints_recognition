@@ -219,17 +219,18 @@ def training_batches_from_gtiff_dirs(
     n_masks = tf.data.experimental.cardinality(mask_ds)
     assert n_images==n_masks, f"Number of images: {n_images} | Number of masks: {n_masks}"
     
-    # Define functions to use for loading gdal images in the data pipeline.
-    # These are just Tensorflow wrappers around 
-    # the gdal_get_image_tensor and gdal_get_mask_tensor functions.
-    tf_load_image_fn = lambda imgname: tf.py_function(func = tf_gdal_get_image_tensor, 
-                              inp=[imgname], 
-                              Tout=[tf.float32])
+    # Define functions to load images and masks using the gdal functions
+    tf_load_image_fn = lambda imgname: tf.py_function(func=funcs.tf_gdal_get_image_tensor, 
+                                                      inp=[imgname, output_image_size, 'bilinear'], 
+                                                      Tout=tf.float32)
+    tf_load_mask_fn = lambda maskname: tf.py_function(func=funcs.tf_gdal_get_mask_tensor, 
+                                                      inp=[maskname, output_image_size, 'nearest'], 
+                                                      Tout=tf.uint8)
 
-    tf_load_mask_fn = lambda maskname: tf.py_function(func = tf_gdal_get_mask_tensor,
-                                                   inp = [maskname],
-                                                    Tout = [tf.float32])
-    
+    # Load and resize images and masks using the gdal functions
+    images = image_ds.map(tf_load_image_fn)
+    masks = mask_ds.map(tf_load_mask_fn)
+
     # zip them together so the resulting dataset puts out a data element of the form (image, matching mask).
     zip_pairs = tf.data.Dataset.zip((images, masks), name=None)
 
@@ -300,16 +301,17 @@ def test_batches_from_gtiff_dirs(
       n_masks = tf.data.experimental.cardinality(mask_ds)
       assert n_images==n_masks, f"Num images: {n_images}, Num masks: {n_masks} "
 
-      # Define functions to use for loading gdal images in the data pipeline.
-      # These are just Tensorflow wrappers around
-      # the gdal_get_image_tensor and gdal_get_mask_tensor functions.
-      tf_load_image_fn = lambda imgname: tf.py_function(func = tf_gdal_get_image_tensor,
-                                inp=[imgname],
-                                Tout=[tf.float32])
+      # Define functions to load images and masks using the gdal functions
+      tf_load_image_fn = lambda imgname: tf.py_function(func=funcs.tf_gdal_get_image_tensor, 
+                                                        inp=[imgname, output_image_size, 'bilinear'], 
+                                                        Tout=tf.float32)
+      tf_load_mask_fn = lambda maskname: tf.py_function(func=funcs.tf_gdal_get_mask_tensor, 
+                                                        inp=[maskname, output_image_size, 'nearest'], 
+                                                        Tout=tf.uint8)
 
-      tf_load_mask_fn = lambda maskname: tf.py_function(func = tf_gdal_get_mask_tensor,
-                                                    inp = [maskname],
-                                                      Tout = [tf.float32])
+      # Load and resize images and masks using the gdal functions
+      images = image_ds.map(tf_load_image_fn)
+      masks = mask_ds.map(tf_load_mask_fn)
 
       # zip them together so the resulting dataset puts out a data element of the form (image, matching mask).
       zip_pairs = tf.data.Dataset.zip((images, masks), name=None)
