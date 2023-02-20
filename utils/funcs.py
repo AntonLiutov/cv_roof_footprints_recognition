@@ -16,12 +16,9 @@ import numpy as np
 # import matplotlib.pyplot as plt
 # from functools import partial
 import tensorflow as tf
-# import albumentations as A
+import albumentations as A
 # import segmentation_models as sm
 
-
-# Get Number of Files
-"""This code gets the number of files in a directory"""
 
 def get_files(dirname, pattern = "*.tif"):
     """
@@ -106,4 +103,66 @@ def tf_gdal_get_mask_tensor(mask_path, new_size, the_method):
     
     return tf.image.resize(mask, new_size, method=the_method)
 
+
+def get_apply_augmentation_function(img_shape, transforms):
+  '''
+  Function that prepackages a function that applies augmentation.
+  Needed because I can't pass img_shape and transforms to tf.numpy_function.
+  '''
+
+  # define prepackaged function to apply augmentation, using the given albumentation transform.
+  def apply_augmentation(image, mask):
+    '''
+    Apply augmentation using the albumentations library.
+    image: ndarray (image tensor).
+    mask: ndarray (mask tensor)
+
+    Packaged parameters:
+    img_shape: shape to use in call to tf.image.resize, following the transform.
+    #todo: can you replace this with a call to resize_it?
+    transforms: the augmentation object returned from call to albumentations.Compose().
+    returns: augmented image and mask.   
+
+    Code reference page: https://albumentations.ai/docs/examples/tensorflow-example/
+    Note: certain augmentations are applied only to the mask.
+    See the bottom of this webpage: https://github.com/albumentations-team/albumentations_examples/blob/master/notebooks/example_kaggle_salt.ipynb.  
+    '''
+    data = {"image":image, "mask":mask}
+    
+    if transforms is not None:
+      aug_data = transforms(**data)
+      aug_img = aug_data["image"]
+      aug_mask = aug_data["mask"]
+    else:
+      aug_img = image
+      aug_mask = mask
+
+    ## DEBUG
+    # check if mask was transformed
+    # changed = aug_mask != mask
+    # print(f'Mask was transformed: {changed.any()}')
+
+    # not needed -- aug_img is already normalized to the range 0-1
+    # renormalization might be needed once contrast/brightness shifts are added to augmentations
+    # aug_img = tf.cast(aug_img/255.0, tf.float32)
+    aug_mask = tf.cast(aug_mask, tf.uint8)
+    aug_img = tf.image.resize(aug_img, size=img_shape)
+    aug_mask = tf.image.resize(aug_mask, size=img_shape, method='nearest')
+    aug_img.set_shape([*img_shape, 3])
+    aug_mask.set_shape([*img_shape, 1])
+
+    return aug_img, aug_mask
+
+  # return the prepackaged function
+  return apply_augmentation
+
+
+def process_data(image, mask, img_shape, transforms):
+  '''
+  Code reference page: https://albumentations.ai/docs/examples/tensorflow-example/
+  '''
+  apply_aug_fn = get_apply_augmentation_function(img_shape, transforms)
+  aug_img, aug_mask = tf.numpy_function(func = apply_aug_fn, inp = [image, mask], Tout=[tf.float32, tf.uint8])
+  #print(aug_img.dtype, aug_mask.dtype)
+  return aug_img, aug_mask
 
