@@ -4,6 +4,7 @@ import os
 # from pathlib import Path
 # import logging
 # import datetime
+from zipfile import ZipFile
 import random
 
 # import json
@@ -18,6 +19,12 @@ from functools import partial
 import tensorflow as tf
 import albumentations as A
 # import segmentation_models as sm
+
+
+def extract_zip_data(zipfilepath, target_dir):
+  # Extract the zip file to the target directory
+  with ZipFile(str(zipfilepath), 'r') as zipObj:
+    zipObj.extractall(path=str(target_dir))
 
 
 def get_files(dirname, pattern = "*.tif"):
