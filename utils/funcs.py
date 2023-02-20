@@ -52,7 +52,7 @@ def tf_gdal_get_image_tensor(image_path):
     """
 
     # Open the raster image file using GDAL
-    ds = gdal.Open(mask_path.numpy())
+    ds = gdal.Open(image_path.numpy())
 
     # Extract the individual raster bands as a list
     bands = [ds.GetRasterBand(i) for i in range(1, ds.RasterCount + 1)]
