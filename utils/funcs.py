@@ -41,60 +41,59 @@ def get_num_files(dirname, pattern="*.tif"):
     return len(get_files(dirname, pattern="*.tif")
 
 
-def tf_gdal_get_image_tensor(image_path):    
-  '''
-  Reads a satellite image geotiff using gdal, and converts to a numpy tensor.
-  Image geotiffs have 3 channels (RGB) and are of type float32.
-
+def tf_gdal_get_image_tensor(image_path):
+    """
+    Reads a satellite image geotiff using gdal, and converts to a numpy tensor.
+    Image geotiffs have 3 channels (RGB) and are of type float32.
   
-  Channels go last in the index order for the output tensor, as is standard for tensorflow.
-
-  :param tf.StringTensor image_path: path to the image file, as a tensorflow String Tensor.
-  '''
-
-  # Open the raster image file using GDAL
-  ds = gdal.Open(mask_path.numpy())
-
-  # Extract the individual raster bands as a list
-  bands = [ds.GetRasterBand(i) for i in range(1, ds.RasterCount + 1)]
-
-  # Iterate over each band and read it as a NumPy array
-  band_arrays = []
-  for band_num, current_band in enumerate(bands):
-      band_arrays.append(gdn.BandReadAsArray(current_band))
-      
-  # Stack the band arrays together along the last axis to create a multi-band array
-  image = np.stack(band_arrays, axis=-1)
+    Channels go last in the index order for the output tensor, as is standard for tensorflow.
     
-  # normalize the float image to [0,1]
-  return image/np.max(image)
+    :param tf.StringTensor image_path: path to the image file, as a tensorflow String Tensor.
+    """
+
+    # Open the raster image file using GDAL
+    ds = gdal.Open(mask_path.numpy())
+
+    # Extract the individual raster bands as a list
+    bands = [ds.GetRasterBand(i) for i in range(1, ds.RasterCount + 1)]
+
+    # Iterate over each band and read it as a NumPy array
+    band_arrays = []
+    for band_num, current_band in enumerate(bands):
+      band_arrays.append(gdn.BandReadAsArray(current_band))
+
+    # Stack the band arrays together along the last axis to create a multi-band array
+    image = np.stack(band_arrays, axis=-1)
+
+    # normalize the float image to [0,1]
+    return image/np.max(image)
 
 
 def tf_gdal_get_mask_tensor(mask_path):
-  '''
-  Reads a mask geotiff image using gdal, and converts to a numpy tensor.
-  Masks have datatype uint8, and a single channel.
-  mask_path: path to a gdal-readable image.
-  
-  Channels go last in the index order for the output tensor, as is standard for tensorflow.
+    """
+    Reads a mask geotiff image using gdal, and converts to a numpy tensor.
+    Masks have datatype uint8, and a single channel.
+    mask_path: path to a gdal-readable image.
 
-  :param tf.StringTensor mask_path: path to the image file, as a tensorflow String Tensor.
-  '''
+    Channels go last in the index order for the output tensor, as is standard for tensorflow.
 
-  # Open the raster image file using GDAL
-  ds = gdal.Open(mask_path.numpy())
+    :param tf.StringTensor mask_path: path to the image file, as a tensorflow String Tensor.
+    """
 
-  # Extract the individual raster bands as a list
-  bands = [ds.GetRasterBand(i) for i in range(1, ds.RasterCount + 1)]
+    # Open the raster image file using GDAL
+    ds = gdal.Open(mask_path.numpy())
 
-  # Iterate over each band and read it as a NumPy array
-  band_arrays = []
-  for band_num, current_band in enumerate(bands):
+    # Extract the individual raster bands as a list
+    bands = [ds.GetRasterBand(i) for i in range(1, ds.RasterCount + 1)]
+
+    # Iterate over each band and read it as a NumPy array
+    band_arrays = []
+    for band_num, current_band in enumerate(bands):
       band_arrays.append(gdn.BandReadAsArray(current_band))
-      
-  # Stack the band arrays together along the last axis to create a multi-band array
-  mask = np.stack(band_arrays, axis=-1)
-    
-  return mask
+
+    # Stack the band arrays together along the last axis to create a multi-band array
+    mask = np.stack(band_arrays, axis=-1)
+
+    return mask
 
 
