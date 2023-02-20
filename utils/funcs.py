@@ -220,10 +220,10 @@ def training_batches_from_gtiff_dirs(
     assert n_images==n_masks, f"Number of images: {n_images} | Number of masks: {n_masks}"
     
     # Define functions to load images and masks using the gdal functions
-    tf_load_image_fn = lambda imgname: tf.py_function(func=funcs.tf_gdal_get_image_tensor, 
+    tf_load_image_fn = lambda imgname: tf.py_function(func=tf_gdal_get_image_tensor, 
                                                       inp=[imgname, output_image_size, 'bilinear'], 
                                                       Tout=tf.float32)
-    tf_load_mask_fn = lambda maskname: tf.py_function(func=funcs.tf_gdal_get_mask_tensor, 
+    tf_load_mask_fn = lambda maskname: tf.py_function(func=tf_gdal_get_mask_tensor, 
                                                       inp=[maskname, output_image_size, 'nearest'], 
                                                       Tout=tf.uint8)
 
@@ -302,10 +302,10 @@ def test_batches_from_gtiff_dirs(
       assert n_images==n_masks, f"Num images: {n_images}, Num masks: {n_masks} "
 
       # Define functions to load images and masks using the gdal functions
-      tf_load_image_fn = lambda imgname: tf.py_function(func=funcs.tf_gdal_get_image_tensor, 
+      tf_load_image_fn = lambda imgname: tf.py_function(func=tf_gdal_get_image_tensor, 
                                                         inp=[imgname, output_image_size, 'bilinear'], 
                                                         Tout=tf.float32)
-      tf_load_mask_fn = lambda maskname: tf.py_function(func=funcs.tf_gdal_get_mask_tensor, 
+      tf_load_mask_fn = lambda maskname: tf.py_function(func=tf_gdal_get_mask_tensor, 
                                                         inp=[maskname, output_image_size, 'nearest'], 
                                                         Tout=tf.uint8)
 
