@@ -1,1 +1,2 @@
 segmentation-models==1.0.1
+ultralytics==8.0.0
