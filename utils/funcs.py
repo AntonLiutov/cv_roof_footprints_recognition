@@ -167,6 +167,12 @@ def process_data(image, mask, img_shape, transforms):
   return aug_img, aug_mask
 
 
+def reset_shapes(image, mask, image_shape):
+    image.set_shape([*image_shape, 3])
+    mask.set_shape([*image_shape,1])
+    return image, mask
+
+
 def training_batches_from_gtiff_dirs(
     image_file_dir,
     mask_file_dir,
@@ -250,6 +256,8 @@ def training_batches_from_gtiff_dirs(
       # so it's necessary to call reset_shapes for the sequential model and when inheriting from the model class.
       # See 'restoring dataset shapes' in https://albumentations.ai/docs/examples/tensorflow-example/.
       .map(partial(process_data, img_shape=output_image_size, transforms=transforms),
+                      num_parallel_calls=tf.data.AUTOTUNE)
+      .map(partial(reset_shapes, image_shape=output_image_size), 
                       num_parallel_calls=tf.data.AUTOTUNE)
       # END augmentation
       .batch(batch_size)
