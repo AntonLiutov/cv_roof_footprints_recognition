@@ -230,10 +230,6 @@ def training_batches_from_gtiff_dirs(
                                                    inp = [maskname],
                                                     Tout = [tf.float32])
     
-    # resize the images and masks to the desired size.
-    images = image_ds.map(tf_load_image_fn).map(lambda x: resize_it(x, [*input_image_size, 3], output_image_size, 'bilinear'))
-    masks = mask_ds.map(tf_load_mask_fn).map(lambda x: resize_it(x, [*input_image_size, 1], output_image_size,'nearest'))
-
     # zip them together so the resulting dataset puts out a data element of the form (image, matching mask).
     zip_pairs = tf.data.Dataset.zip((images, masks), name=None)
 
@@ -253,8 +249,6 @@ def training_batches_from_gtiff_dirs(
       # so it's necessary to call reset_shapes for the sequential model and when inheriting from the model class.
       # See 'restoring dataset shapes' in https://albumentations.ai/docs/examples/tensorflow-example/.
       .map(partial(process_data, img_shape=output_image_size, transforms=transforms),
-                      num_parallel_calls=tf.data.AUTOTUNE)
-      .map(partial(reset_shapes, image_shape=output_image_size), 
                       num_parallel_calls=tf.data.AUTOTUNE)
       # END augmentation
       .batch(batch_size)
@@ -316,10 +310,6 @@ def test_batches_from_gtiff_dirs(
       tf_load_mask_fn = lambda maskname: tf.py_function(func = tf_gdal_get_mask_tensor,
                                                     inp = [maskname],
                                                       Tout = [tf.float32])
-
-      # resize the images and masks to the desired size.
-      images = image_ds.map(tf_load_image_fn).map(lambda x: resize_it(x, [*input_image_size, 3], output_image_size, 'bilinear'))
-      masks = mask_ds.map(tf_load_mask_fn).map(lambda x: resize_it(x, (*input_image_size, 1), output_image_size,'nearest'))
 
       # zip them together so the resulting dataset puts out a data element of the form (image, matching mask).
       zip_pairs = tf.data.Dataset.zip((images, masks), name=None)
