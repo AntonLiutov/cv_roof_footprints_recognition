@@ -166,3 +166,169 @@ def process_data(image, mask, img_shape, transforms):
   #print(aug_img.dtype, aug_mask.dtype)
   return aug_img, aug_mask
 
+
+def training_batches_from_gtiff_dirs(
+    image_file_dir,
+    mask_file_dir,
+    batch_size, 
+    input_image_size,
+    output_image_size,
+    transforms = None):
+    '''
+    image_file_dir: a directory containing geotiff image files to be used in training.
+    mask_file_dir: a directory containing matching geotiff mask files to be used in training.
+    batch_size: batch size, a positive integer.
+    input_image_size: dimensions of the input images in the form (rows, columns).
+    output_image_size: dimensions of the output images in the form (new_rows, new_columns).
+    tfgseed: Tensorflow global random seed for reproducible results. 
+    transforms: Albumentations object for augmenting training data. None == no augmentation (default).
+
+    Matching images and masks are assumed to have names of the form:
+    unique_string.tif, same_unique_string.mask.tif. 
+    
+    Examples of matching image and mask: 
+    "training_img909.tif",
+    "training_img909.mask.tif".
+
+    Example input image size: (650, 650).
+    Example output image size: (512, 512).
+
+    Returns: a tf.data.Dataset containing batches of matching images and masks, \
+      suitable for using in model.fit. 
+   '''
+
+    tf_global_seed = 20220607
+    py_seed = 303041
+
+    # set this for reproducibility in file listings
+    tf.random.set_seed(tf_global_seed)
+
+    # set this for reproducibility in augmentations
+    random.seed(py_seed)
+
+    image_pat = os.path.join(image_file_dir, '*.tif')
+    mask_pat = os.path.join(mask_file_dir, '*.mask.tif')
+
+
+    # giving these the same op-level random seed causes them to be listed in the same order.
+    image_ds = tf.data.Dataset.list_files(image_pat, seed=333)
+    mask_ds = tf.data.Dataset.list_files(mask_pat, seed=333)
+
+    # get the number of training images and masks. Since they match, the numbers should be the same. 
+    n_images = tf.data.experimental.cardinality(image_ds)
+    n_masks = tf.data.experimental.cardinality(mask_ds)
+    assert n_images==n_masks, f"Number of images: {n_images} | Number of masks: {n_masks}"
+    
+    # Define functions to use for loading gdal images in the data pipeline.
+    # These are just Tensorflow wrappers around 
+    # the gdal_get_image_tensor and gdal_get_mask_tensor functions.
+    tf_load_image_fn = lambda imgname: tf.py_function(func = tf_gdal_get_image_tensor, 
+                              inp=[imgname], 
+                              Tout=[tf.float32])
+
+    tf_load_mask_fn = lambda maskname: tf.py_function(func = tf_gdal_get_mask_tensor,
+                                                   inp = [maskname],
+                                                    Tout = [tf.float32])
+    
+    # resize the images and masks to the desired size.
+    images = image_ds.map(tf_load_image_fn).map(lambda x: resize_it(x, [*input_image_size, 3], output_image_size, 'bilinear'))
+    masks = mask_ds.map(tf_load_mask_fn).map(lambda x: resize_it(x, [*input_image_size, 1], output_image_size,'nearest'))
+
+    # zip them together so the resulting dataset puts out a data element of the form (image, matching mask).
+    zip_pairs = tf.data.Dataset.zip((images, masks), name=None)
+
+    len_train = n_images
+    buffer_size = len_train
+
+    data_batches = None
+    
+    if transforms is not None:
+      data_batches = (
+      zip_pairs
+      .cache()
+      .shuffle(buffer_size)
+      # START augmentation 
+      # the next two lines apply the augmentation. 
+      # The dataset loses its shape after applying a tf.numpy_function, 
+      # so it's necessary to call reset_shapes for the sequential model and when inheriting from the model class.
+      # See 'restoring dataset shapes' in https://albumentations.ai/docs/examples/tensorflow-example/.
+      .map(partial(process_data, img_shape=output_image_size, transforms=transforms),
+                      num_parallel_calls=tf.data.AUTOTUNE)
+      .map(partial(reset_shapes, image_shape=output_image_size), 
+                      num_parallel_calls=tf.data.AUTOTUNE)
+      # END augmentation
+      .batch(batch_size)
+      .repeat()
+      .prefetch(buffer_size=tf.data.AUTOTUNE)
+      )
+
+
+    else:
+      data_batches = (
+        zip_pairs
+        .cache()
+        .shuffle(buffer_size)
+        .batch(batch_size)
+        .repeat()
+        .prefetch(buffer_size=tf.data.AUTOTUNE)
+        )
+
+    return data_batches
+
+
+def test_batches_from_gtiff_dirs(
+    image_file_dir,
+    mask_file_dir,
+    batch_size,
+    input_image_size,
+    output_image_size
+    ):
+      '''
+
+      Data generator for test batches.
+      This data generator does not shuffle, cache, repeat, or augment -- it just delivers all
+      test image batches in the same order every time.
+
+      See the notes for 'train_batch_from_gtiff_dirs' for more details.
+      '''
+
+      image_pat = os.path.join(image_file_dir, '*.tif')
+      mask_pat = os.path.join(mask_file_dir, '*.tif')
+
+
+      # giving these the same random seed causes them to be listed in the same order.
+      image_ds = tf.data.Dataset.list_files(image_pat, seed=333)
+      mask_ds = tf.data.Dataset.list_files(mask_pat, seed=333)
+
+      # get the number of training images and masks. Since they match, the numbers should be the same.
+      # todo: make the data generator end appropriately if the numbers don't match.
+      n_images = tf.data.experimental.cardinality(image_ds)
+      n_masks = tf.data.experimental.cardinality(mask_ds)
+      assert n_images==n_masks, f"Num images: {n_images}, Num masks: {n_masks} "
+
+      # Define functions to use for loading gdal images in the data pipeline.
+      # These are just Tensorflow wrappers around
+      # the gdal_get_image_tensor and gdal_get_mask_tensor functions.
+      tf_load_image_fn = lambda imgname: tf.py_function(func = tf_gdal_get_image_tensor,
+                                inp=[imgname],
+                                Tout=[tf.float32])
+
+      tf_load_mask_fn = lambda maskname: tf.py_function(func = tf_gdal_get_mask_tensor,
+                                                    inp = [maskname],
+                                                      Tout = [tf.float32])
+
+      # resize the images and masks to the desired size.
+      images = image_ds.map(tf_load_image_fn).map(lambda x: resize_it(x, [*input_image_size, 3], output_image_size, 'bilinear'))
+      masks = mask_ds.map(tf_load_mask_fn).map(lambda x: resize_it(x, (*input_image_size, 1), output_image_size,'nearest'))
+
+      # zip them together so the resulting dataset puts out a data element of the form (image, matching mask).
+      zip_pairs = tf.data.Dataset.zip((images, masks), name=None)
+
+      len_train = n_images
+      buffer_size = len_train
+
+      data_batches = (
+        zip_pairs.batch(batch_size)
+      )
+
+      return data_batches
